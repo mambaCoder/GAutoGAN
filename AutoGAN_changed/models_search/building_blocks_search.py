@@ -440,7 +440,7 @@ class Dil5Block(nn.Module):
 
 class DisCell(nn.Module):
     def __init__(self, in_channels, out_channels, num_skip_in):
-        super(Cell, self).__init__()
+        super(DisCell, self).__init__()
         # 细节是1是上采样的一层而2的up_block为False,up_id只是判断上采样的类型，实际是否上采样是自己规定的
         self.sep3conv = Sep3Block(in_channels, out_channels)
         self.sep5conv = Sep5Block(in_channels, out_channels)
