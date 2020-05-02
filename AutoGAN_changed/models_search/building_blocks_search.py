@@ -311,8 +311,11 @@ class Sep3Block(nn.Module):
             nn.ReLU(inplace=False),
             nn.Conv2d(in_channels, in_channels, kernel_size=kernel_size, stride=1, padding=padding, bias=False),
             nn.Conv2d(in_channels, out_channels, kernel_size=1, padding=0, bias=False))
-        self.bn = nn.BatchNorm2d(out_channels)
-        self.inn = nn.InstanceNorm2d(out_channels)
+        self.bn1 = nn.BatchNorm2d(in_channels)
+        self.inn1 = nn.InstanceNorm2d(in_channels)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+        self.inn2 = nn.InstanceNorm2d(out_channels)
+        
 
     def set_arch(self, norm_id):
         self.norm_type = NORM_TYPE[norm_id]
@@ -323,9 +326,9 @@ class Sep3Block(nn.Module):
         # norm
         if self.norm_type:
             if self.norm_type == 'bn':
-                h = self.bn(h)
+                h = self.bn1(h)
             elif self.norm_type == 'in':
-                h = self.inn(h)
+                h = self.inn1(h)
             else:
                 raise NotImplementedError(self.norm_type)
         #conv2
@@ -333,9 +336,9 @@ class Sep3Block(nn.Module):
         # norm
         if self.norm_type:
             if self.norm_type == 'bn':
-                h = self.bn(h)
+                h = self.bn2(h)
             elif self.norm_type == 'in':
-                h = self.inn(h)
+                h = self.inn2(h)
             else:
                 raise NotImplementedError(self.norm_type)
 
@@ -353,8 +356,10 @@ class Sep5Block(nn.Module):
             nn.ReLU(inplace=False),
             nn.Conv2d(in_channels, in_channels, kernel_size=kernel_size, stride=1, padding=padding, bias=False),
             nn.Conv2d(in_channels, out_channels, kernel_size=1, padding=0, bias=False))
-        self.bn = nn.BatchNorm2d(out_channels)
-        self.inn = nn.InstanceNorm2d(out_channels)
+        self.bn1 = nn.BatchNorm2d(in_channels)
+        self.inn1 = nn.InstanceNorm2d(in_channels)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+        self.inn2 = nn.InstanceNorm2d(out_channels)
 
     def set_arch(self, norm_id):
         self.norm_type = NORM_TYPE[norm_id]
@@ -365,9 +370,9 @@ class Sep5Block(nn.Module):
         # norm
         if self.norm_type:
             if self.norm_type == 'bn':
-                h = self.bn(h)
+                h = self.bn1(h)
             elif self.norm_type == 'in':
-                h = self.inn(h)
+                h = self.inn1(h)
             else:
                 raise NotImplementedError(self.norm_type)
         #conv2
@@ -375,9 +380,9 @@ class Sep5Block(nn.Module):
         # norm
         if self.norm_type:
             if self.norm_type == 'bn':
-                h = self.bn(h)
+                h = self.bn2(h)
             elif self.norm_type == 'in':
-                h = self.inn(h)
+                h = self.inn2(h)
             else:
                 raise NotImplementedError(self.norm_type)
 
@@ -446,8 +451,10 @@ class DisCell(nn.Module):
         self.sep5conv = Sep5Block(in_channels, out_channels)
         self.dil3conv = Dil3Block(in_channels, out_channels)
         self.dil5conv = Dil5Block(in_channels, out_channels)
-        self.avgpool = nn.AvgPool2d(3, stride=2, padding=1, count_include_pad=False)
-        self.maxpool = nn.MaxPool2d(3, stride=2, padding=1)
+        self.avgpool = nn.Sequential(nn.AvgPool2d(3, stride=2, padding=1, count_include_pad=False),
+        nn.Conv2d(in_channels, out_channels, kernel_size=1))
+        self.maxpool = nn.Sequential(nn.MaxPool2d(3, stride=2, padding=1),
+        nn.Conv2d(in_channels, out_channels, kernel_size=1))
 
         self.c_sc = nn.Conv2d(in_channels, out_channels, kernel_size=1)
 
