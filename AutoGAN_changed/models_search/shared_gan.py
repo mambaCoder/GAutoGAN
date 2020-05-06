@@ -34,12 +34,12 @@ class Generator(nn.Module):
         self.cell1.set_arch(conv_id=arch_stage1[0], norm_id=arch_stage1[1], up_id=arch_stage1[2],
                             short_cut_id=arch_stage1[3], skip_ins=[])
         if cur_stage >= 1:
-            arch_stage2 = arch_id[4:9]
+            arch_stage2 = arch_id[6:11]
             self.cell2.set_arch(conv_id=arch_stage2[0], norm_id=arch_stage2[1], up_id=arch_stage2[2],
                                 short_cut_id=arch_stage2[3], skip_ins=arch_stage2[4])
 
         if cur_stage == 2:
-            arch_stage3 = arch_id[9:]
+            arch_stage3 = arch_id[14:]
             self.cell3.set_arch(conv_id=arch_stage3[0], norm_id=arch_stage3[1], up_id=arch_stage3[2],
                                 short_cut_id=arch_stage3[3], skip_ins=arch_stage3[4])
 
