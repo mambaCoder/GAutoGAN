@@ -14,7 +14,7 @@ UP_TYPE = {0: 'bilinear', 1: 'nearest', 2: 'deconv'}
 SHORT_CUT_TYPE = {0: False, 1: True}
 SKIP_TYPE = {0: False, 1: True}  # 共用
 
-DISCONV_TYPE = {0:'sep_conv_3x3',1:'sep_conv_5x5',2:'dil_conv_3x3',3:'dil_conv_5x5',4:'max_pool_3x3',5:'avg_pool_3x3'}
+DISCONV_TYPE = {0:'sep_conv_3x3',1:'sep_conv_5x5',2:'dil_conv_3x3',3:'dil_conv_5x5'} # ,4:'max_pool_3x3',5:'avg_pool_3x3'
 # SKIP_TYPE = {0: False, 1: True}
 
 def decimal2binary(n):
