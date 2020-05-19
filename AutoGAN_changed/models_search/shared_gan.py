@@ -62,8 +62,8 @@ class Discriminator(nn.Module):
         self.ch = args.df_dim
         self.activation = activation
         self.cell1 = OptimizedDisBlock(args, 3, self.ch)
-        self.cell2 = DisCell(args.df_dim, args.df_dim, num_skip_in=1)
-        self.cell3 = DisCell(args.df_dim, args.df_dim, num_skip_in=2)
+        self.cell2 = DisCell(args, args.df_dim, args.df_dim, num_skip_in=1)
+        self.cell3 = DisCell(args, args.df_dim, args.df_dim, num_skip_in=2)
         self.block4 = DisBlock(
             args,
             self.ch,
@@ -84,11 +84,11 @@ class Discriminator(nn.Module):
         # self.cell1.set_arch(disconv_id=arch_stage1[4], norm_id=arch_stage1[5], skip_ins=[])
         if cur_stage >= 1:
             arch_stage2 = arch_id[9:13]
-            self.cell2.set_arch(disconv_id=arch_stage2[0], norm_id=arch_stage2[1], skip_ins=arch_stage2[2])
+            self.cell2.set_arch(disconv_id=arch_stage2[0], norm_id=arch_stage2[1], short_cut_id=arch_stage2[2], skip_ins=arch_stage2[3])
 
         if cur_stage == 2:
             arch_stage3 = arch_id[18:]
-            self.cell3.set_arch(disconv_id=arch_stage3[0], norm_id=arch_stage3[1], skip_ins=arch_stage3[2])
+            self.cell3.set_arch(disconv_id=arch_stage3[0], norm_id=arch_stage3[1], short_cut_id=arch_stage2[2], skip_ins=arch_stage3[3])
 
     def forward(self, x):
         h = x
