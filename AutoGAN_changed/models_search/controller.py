@@ -24,10 +24,9 @@ class Controller(nn.Module):
         self.lstm = torch.nn.LSTMCell(self.hid_size, self.hid_size)
         if cur_stage:
             self.tokens = [len(CONV_TYPE), len(NORM_TYPE), len(UP_TYPE), len(SHORT_CUT_TYPE), len(SKIP_TYPE)**cur_stage,
-                           len(DISCONV_TYPE), len(NORM_TYPE), len(SKIP_TYPE)**cur_stage]
+                           len(DISCONV_TYPE), len(NORM_TYPE), len(SHORT_CUT_TYPE), len(SKIP_TYPE)**cur_stage]
         else:
-            self.tokens = [len(CONV_TYPE), len(NORM_TYPE), len(UP_TYPE), len(SHORT_CUT_TYPE), len(DISCONV_TYPE),
-                           len(NORM_TYPE)]
+            self.tokens = [len(CONV_TYPE), len(NORM_TYPE), len(UP_TYPE), len(SHORT_CUT_TYPE)]
         self.encoder = nn.Embedding(sum(self.tokens), self.hid_size)
         self.decoders = nn.ModuleList([nn.Linear(self.hid_size, token) for token in self.tokens])
 

@@ -34,12 +34,12 @@ class Generator(nn.Module):
         self.cell1.set_arch(conv_id=arch_stage1[0], norm_id=arch_stage1[1], up_id=arch_stage1[2],
                             short_cut_id=arch_stage1[3], skip_ins=[])
         if cur_stage >= 1:
-            arch_stage2 = arch_id[6:11]
+            arch_stage2 = arch_id[4:9]
             self.cell2.set_arch(conv_id=arch_stage2[0], norm_id=arch_stage2[1], up_id=arch_stage2[2],
                                 short_cut_id=arch_stage2[3], skip_ins=arch_stage2[4])
 
         if cur_stage == 2:
-            arch_stage3 = arch_id[14:]
+            arch_stage3 = arch_id[13:]
             self.cell3.set_arch(conv_id=arch_stage3[0], norm_id=arch_stage3[1], up_id=arch_stage3[2],
                                 short_cut_id=arch_stage3[3], skip_ins=arch_stage3[4])
 
@@ -61,7 +61,7 @@ class Discriminator(nn.Module):
         super(Discriminator, self).__init__()
         self.ch = args.df_dim
         self.activation = activation
-        self.cell1 = DisCell(3, args.df_dim, num_skip_in=0)
+        self.cell1 = OptimizedDisBlock(args, 3, self.ch)
         self.cell2 = DisCell(args.df_dim, args.df_dim, num_skip_in=1)
         self.cell3 = DisCell(args.df_dim, args.df_dim, num_skip_in=2)
         self.block4 = DisBlock(
@@ -80,15 +80,15 @@ class Discriminator(nn.Module):
             arch_id = arch_id.to('cpu').numpy().tolist()
         arch_id = [int(x) for x in arch_id]
         self.cur_stage = cur_stage
-        arch_stage1 = arch_id[:6]
-        self.cell1.set_arch(disconv_id=arch_stage1[4], norm_id=arch_stage1[5], skip_ins=[])
+        # arch_stage1 = arch_id[:6]
+        # self.cell1.set_arch(disconv_id=arch_stage1[4], norm_id=arch_stage1[5], skip_ins=[])
         if cur_stage >= 1:
-            arch_stage2 = arch_id[6:14]
-            self.cell2.set_arch(disconv_id=arch_stage2[5], norm_id=arch_stage2[6], skip_ins=arch_stage2[7])
+            arch_stage2 = arch_id[9:13]
+            self.cell2.set_arch(disconv_id=arch_stage2[0], norm_id=arch_stage2[1], skip_ins=arch_stage2[2])
 
         if cur_stage == 2:
-            arch_stage3 = arch_id[14:]
-            self.cell3.set_arch(disconv_id=arch_stage3[5], norm_id=arch_stage3[6], skip_ins=arch_stage3[7])
+            arch_stage3 = arch_id[18:]
+            self.cell3.set_arch(disconv_id=arch_stage3[0], norm_id=arch_stage3[1], skip_ins=arch_stage3[2])
 
     def forward(self, x):
         h = x
