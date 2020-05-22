@@ -92,7 +92,7 @@ class Discriminator(nn.Module):
 
     def forward(self, x):
         h = x
-        layers = [self.block1, self.block2, self.block3]
+        layers = [self.cell1, self.cell2, self.cell3]
         variable_model = nn.Sequential(*layers[:(self.cur_stage + 1)])
         h = variable_model(h)
         h = self.block4(h)
