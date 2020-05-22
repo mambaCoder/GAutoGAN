@@ -39,7 +39,7 @@ class Generator(nn.Module):
                                 short_cut_id=arch_stage2[3], skip_ins=arch_stage2[4])
 
         if cur_stage == 2:
-            arch_stage3 = arch_id[13:]
+            arch_stage3 = arch_id[12:]
             self.cell3.set_arch(conv_id=arch_stage3[0], norm_id=arch_stage3[1], up_id=arch_stage3[2],
                                 short_cut_id=arch_stage3[3], skip_ins=arch_stage3[4])
 
@@ -62,8 +62,8 @@ class Discriminator(nn.Module):
         self.ch = args.df_dim
         self.activation = activation
         self.cell1 = OptimizedDisBlock(args, 3, self.ch)
-        self.cell2 = DisCell(args, args.df_dim, args.df_dim, num_skip_in=1)
-        self.cell3 = DisCell(args, args.df_dim, args.df_dim, num_skip_in=2)
+        self.cell2 = DisCell(args, self.ch, self.ch, activation=activation, downsample=True)
+        self.cell3 = DisCell(args, self.ch, self.ch, activation=activation, downsample=False)
         self.block4 = DisBlock(
             args,
             self.ch,
@@ -83,37 +83,23 @@ class Discriminator(nn.Module):
         # arch_stage1 = arch_id[:6]
         # self.cell1.set_arch(disconv_id=arch_stage1[4], norm_id=arch_stage1[5], skip_ins=[])
         if cur_stage >= 1:
-            arch_stage2 = arch_id[9:13]
-            self.cell2.set_arch(disconv_id=arch_stage2[0], norm_id=arch_stage2[1], short_cut_id=arch_stage2[2], skip_ins=arch_stage2[3])
+            arch_stage2 = arch_id[9:12]
+            self.cell2.set_arch(disconv_id=arch_stage2[0], norm_id=arch_stage2[1], sc_id=arch_stage2[2])
 
         if cur_stage == 2:
-            arch_stage3 = arch_id[18:]
-            self.cell3.set_arch(disconv_id=arch_stage3[0], norm_id=arch_stage3[1], short_cut_id=arch_stage2[2], skip_ins=arch_stage3[3])
+            arch_stage3 = arch_id[17:]
+            self.cell3.set_arch(disconv_id=arch_stage3[0], norm_id=arch_stage3[1], sc_id=arch_stage2[2])
 
     def forward(self, x):
         h = x
-        h1_skip_out, h1 = self.cell1(h)
-        if self.cur_stage == 0:
-            h = self.block4(h1)
-            h = self.activation(h)
-            # Global average pooling
-            h = h.sum(2).sum(2)
-            output = self.l5(h)
-            return output
-        h2_skip_out, h2 = self.cell2(h1, (h1_skip_out,))
-        if self.cur_stage == 1:
-            h = self.block4(h2)
-            h = self.activation(h)
-            # Global average pooling
-            h = h.sum(2).sum(2)
-            output = self.l5(h)
-            return output
-        _, h3 = self.cell3(h2, (h1_skip_out, h2_skip_out))
-        if self.cur_stage == 2:
-            h = self.block4(h3)
-            h = self.activation(h)
-            # Global average pooling
-            h = h.sum(2).sum(2)
-            output = self.l5(h)
-            return output
+        layers = [self.block1, self.block2, self.block3]
+        variable_model = nn.Sequential(*layers[:(self.cur_stage + 1)])
+        h = variable_model(h)
+        h = self.block4(h)
+        h = self.activation(h)
+        # Global average pooling
+        h = h.sum(2).sum(2)
+        output = self.l5(h)
+
+        return output
 

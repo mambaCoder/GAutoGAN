@@ -185,8 +185,13 @@ class Cell(nn.Module):
 
         return h_skip_out, final_out
 
+
 class DisCell(nn.Module):
-    def __init__(self, args, in_channels, out_channels, num_skip_in=0):
+    def __init__(self, args, in_channels, out_channels, hidden_channels=None,
+            kernel_size=3,
+            padding=1,
+            activation=nn.ReLU(),
+            downsample=False):
         super(DisCell, self).__init__()
         self.c1 = nn.Conv2d(
             in_channels,
@@ -203,7 +208,13 @@ class DisCell(nn.Module):
             self.c2 = nn.utils.spectral_norm(self.c2)
         self.bn = nn.BatchNorm2d(out_channels)
         self.inn = nn.InstanceNorm2d(out_channels)
-        self.activation=nn.ReLU()
+        self.activation = activation
+        self.downsample = downsample
+        self.learnable_sc = (in_channels != out_channels) or downsample
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        hidden_channels = in_channels if hidden_channels is None else hidden_channels
+
         # sep3
         self.disconv1 = nn.Sequential(
             nn.ReLU(inplace=False),
@@ -226,72 +237,100 @@ class DisCell(nn.Module):
             nn.Conv2d(out_channels, out_channels, kernel_size=5, stride=2, padding=4,
                       dilation=2, bias=False),
             nn.Conv2d(out_channels, out_channels, kernel_size=1, padding=0, bias=False))
-        self.avgpool = nn.Sequential(nn.AvgPool2d(3, stride=2, padding=1, count_include_pad=False),
-                                     nn.Conv2d(in_channels, out_channels, kernel_size=1))
-        self.maxpool = nn.Sequential(nn.MaxPool2d(3, stride=2, padding=1),
-                                     nn.Conv2d(in_channels, out_channels, kernel_size=1))
+        # self.avgpool = nn.Sequential(nn.AvgPool2d(3, stride=2, padding=1, count_include_pad=False),
+        #                              nn.Conv2d(in_channels, out_channels, kernel_size=1))
+        # self.maxpool = nn.Sequential(nn.MaxPool2d(3, stride=2, padding=1),
+        #                              nn.Conv2d(in_channels, out_channels, kernel_size=1))
 
+        self.avgpool = nn.AvgPool2d(kernel_size=2)
+        self.maxpool = nn.MaxPool2d(kernel_size=2)
         self.c_sc = nn.Conv2d(in_channels, out_channels, kernel_size=1)
 
-        # skip_in
-        self.skip_convx2 = nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=2)
-        self.skip_convx4 = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=2),
-            nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=2)
-        )
-
-        self.num_skip_in = num_skip_in
-        if num_skip_in:
-            self.skip_in_ops = nn.ModuleList(
-                [nn.Conv2d(in_channels, out_channels, kernel_size=1) for _ in range(num_skip_in)])
-
-    def set_arch(self, disconv_id, norm_id, short_cut_id, skip_ins):
+    def set_arch(self, disconv_id, norm_id, sc_id):
         self.norm_type = NORM_TYPE[norm_id]
         self.disconv_type = DISCONV_TYPE[disconv_id]
-        self.short_cut = SHORT_CUT_TYPE[short_cut_id]
-        if self.num_skip_in:
-            self.skip_ins = [0 for _ in range(self.num_skip_in)]
-            for skip_idx, skip_in in enumerate(decimal2binary(skip_ins)[::-1]):
-                self.skip_ins[-(skip_idx + 1)] = int(skip_in)
+        self.short_cut = SHORT_CUT_TYPE[sc_id]
 
-    def forward(self, x, skip_ft=None):
-
-        # first conv
+    def residual(self, x):
         h = x
-        h = self.activation(h)
         h = self.c1(h)
         h = self.activation(h)
         h = self.c2(h)
-        _, _, ht, wt = h.size()
-        h_skip_out = h  # first conv之后可能会跳出进行skip_connection操
-
-        # second conv
-        if self.num_skip_in:
-            assert len(self.skip_in_ops) == len(self.skip_ins)
-            for skip_flag, ft, skip_in_op in zip(self.skip_ins, skip_ft, self.skip_in_ops):
-                if skip_flag:
-                    scale = ft.size()[-1] // wt
-                    h += skip_in_op(getattr(self, f'skip_convx{scale}')(ft))
-                    # if self.up_type != 'deconv':
-                    #     h += skip_in_op(F.interpolate(ft, size=(ht, wt), mode=self.up_type))
-                    # else:
-                    #     scale = wt // ft.size()[-1]
-                    #     h += skip_in_op(getattr(self, f'skip_deconvx{scale}')(ft))
-        if self.disconv_type == 'sep_conv_3x3':
-            h = self.disconv1(h)
-        elif self.disconv_type == 'sep_conv_5x5':
-            h = self.disconv2(h)
-        elif self.disconv_type == 'dil_conv_3x3':
-            h = self.disconv3(h)
-        elif self.disconv_type == 'dil_conv_5x5':
-            h = self.disconv4(h)
-        elif self.disconv_type == 'max_pool_3x3':
-            h = self.maxpool(h)
-        elif self.disconv_type == 'avg_pool_3x3':
-            h = self.avgpool(h)
+        if self.downsample:
+            if self.disconv_type == 'sep_conv_3x3':
+                h = self.disconv1(h)
+            elif self.disconv_type == 'sep_conv_5x5':
+                h = self.disconv2(h)
+            elif self.disconv_type == 'dil_conv_3x3':
+                h = self.disconv3(h)
+            elif self.disconv_type == 'dil_conv_5x5':
+                h = self.disconv4(h)
+            elif self.disconv_type == 'max_pool_3x3':
+                h = self.maxpool(h)
+            elif self.disconv_type == 'avg_pool_3x3':
+                h = self.avgpool(h)
+            else:
+                raise NotImplementedError(self.disconv_type)
         else:
-            raise NotImplementedError(self.norm_type)
+            if self.disconv_type == 'sep_conv_3x3':
+                normal_conv1 = nn.Sequential(
+                    nn.ReLU(inplace=False),
+                    nn.Conv2d(self.out_channels, self.out_channels, kernel_size=3, stride=1, padding=1, bias=False),
+                    nn.Conv2d(self.out_channels, self.out_channels, kernel_size=1, padding=0, bias=False))
+                h = normal_conv1(h)
+            elif self.disconv_type == 'sep_conv_5x5':
+                normal_conv2 = nn.Sequential(
+                    nn.ReLU(inplace=False),
+                    nn.Conv2d(self.out_channels, self.out_channels, kernel_size=5, stride=1, padding=2, bias=False),
+                    nn.Conv2d(self.out_channels, self.out_channels, kernel_size=1, padding=0, bias=False))
+                h = normal_conv2(h)
+            elif self.disconv_type == 'dil_conv_3x3':
+                normal_conv3 = nn.Sequential(
+                    nn.ReLU(inplace=False),
+                    nn.Conv2d(self.out_channels, self.out_channels, kernel_size=3, stride=1, padding=2,
+                              dilation=2, bias=False),
+                    nn.Conv2d(self.out_channels, self.out_channels, kernel_size=1, padding=0, bias=False))
+                h = normal_conv3(h)
+            elif self.disconv_type == 'dil_conv_5x5':
+                normal_conv3 = nn.Sequential(
+                    nn.ReLU(inplace=False),
+                    nn.Conv2d(self.out_channels, self.out_channels, kernel_size=5, stride=1, padding=4,
+                              dilation=2, bias=False),
+                    nn.Conv2d(self.out_channels, self.out_channels, kernel_size=1, padding=0, bias=False))
+                h = normal_conv3(h)
+            elif self.disconv_type == 'max_pool_3x3':
+                h = h
+            elif self.disconv_type == 'avg_pool_3x3':
+                h = h
+            else:
+                raise NotImplementedError(self.disconv_type)
+        return h
 
+    def shortcut(self, x):
+        if self.learnable_sc:
+            x = self.c_sc(x)
+            if self.downsample:
+                if self.disconv_type == 'sep_conv_3x3':
+                    return self.disconv1(x)
+                elif self.disconv_type == 'sep_conv_5x5':
+                    return self.disconv2(x)
+                elif self.disconv_type == 'dil_conv_3x3':
+                    return self.disconv3(x)
+                elif self.disconv_type == 'dil_conv_5x5':
+                    return self.disconv4(x)
+                elif self.disconv_type == 'max_pool_3x3':
+                    return self.maxpool(x)
+                elif self.disconv_type == 'avg_pool_3x3':
+                    return self.avgpool(x)
+                else:
+                    raise NotImplementedError(self.disconv_type)
+            else:
+                return x
+        else:
+            return x
+
+    def forward(self, x):
+        h = self.residual(x)
         if self.norm_type:
             if self.norm_type == 'bn':
                 h = self.bn(h)
@@ -299,10 +338,10 @@ class DisCell(nn.Module):
                 h = self.inn(h)
             else:
                 raise NotImplementedError(self.norm_type)
-        final_out = h
         if self.short_cut:
-            final_out += _downsample(x)
-        return h_skip_out, final_out
+            h = h + self.short_cut(x)
+        final_out = h
+        return final_out
 
 
 def _downsample(x):
