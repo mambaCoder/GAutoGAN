@@ -253,6 +253,7 @@ class DisCell(nn.Module):
 
     def residual(self, x):
         h = x
+        h = self.activation(h)
         h = self.c1(h)
         h = self.activation(h)
         h = self.c2(h)
@@ -292,12 +293,12 @@ class DisCell(nn.Module):
                     nn.Conv2d(self.out_channels, self.out_channels, kernel_size=1, padding=0, bias=False))
                 h = normal_conv3(h)
             elif self.disconv_type == 'dil_conv_5x5':
-                normal_conv3 = nn.Sequential(
+                normal_conv4 = nn.Sequential(
                     nn.ReLU(inplace=False),
                     nn.Conv2d(self.out_channels, self.out_channels, kernel_size=5, stride=1, padding=4,
                               dilation=2, bias=False),
                     nn.Conv2d(self.out_channels, self.out_channels, kernel_size=1, padding=0, bias=False))
-                h = normal_conv3(h)
+                h = normal_conv4(h)
             elif self.disconv_type == 'max_pool_3x3':
                 h = h
             elif self.disconv_type == 'avg_pool_3x3':
@@ -397,7 +398,7 @@ class OptimizedDisBlock(nn.Module):
         h = self.c1(h)
         h = self.activation(h)
         h = self.c2(h)
-        return h, self.residual(x) + self.shortcut(x)
+        return self.residual(x) + self.shortcut(x)
 
 class DisBlock(nn.Module):
     def __init__(
