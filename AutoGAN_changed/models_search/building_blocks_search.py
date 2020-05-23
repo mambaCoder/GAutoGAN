@@ -223,7 +223,7 @@ class DisCell(nn.Module):
         # sep5
         self.disconv2 = nn.Sequential(
             nn.ReLU(inplace=False),
-            nn.Conv2d(out_channels, in_channels, kernel_size=5, stride=2, padding=2, bias=False),
+            nn.Conv2d(out_channels, out_channels, kernel_size=5, stride=2, padding=2, bias=False),
             nn.Conv2d(out_channels, out_channels, kernel_size=1, padding=0, bias=False))
         # dil3
         self.disconv3 = nn.Sequential(
@@ -241,6 +241,28 @@ class DisCell(nn.Module):
         #                              nn.Conv2d(in_channels, out_channels, kernel_size=1))
         # self.maxpool = nn.Sequential(nn.MaxPool2d(3, stride=2, padding=1),
         #                              nn.Conv2d(in_channels, out_channels, kernel_size=1))
+        # normal_cell
+        self.normal_conv1 = nn.Sequential(
+            nn.ReLU(inplace=False),
+            nn.Conv2d(self.out_channels, self.out_channels, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.Conv2d(self.out_channels, self.out_channels, kernel_size=1, padding=0, bias=False))
+
+        self.normal_conv2 = nn.Sequential(
+            nn.ReLU(inplace=False),
+            nn.Conv2d(self.out_channels, self.out_channels, kernel_size=5, stride=1, padding=2, bias=False),
+            nn.Conv2d(self.out_channels, self.out_channels, kernel_size=1, padding=0, bias=False))
+
+        self.normal_conv3 = nn.Sequential(
+            nn.ReLU(inplace=False),
+            nn.Conv2d(self.out_channels, self.out_channels, kernel_size=3, stride=1, padding=2,
+                      dilation=2, bias=False),
+            nn.Conv2d(self.out_channels, self.out_channels, kernel_size=1, padding=0, bias=False))
+
+        self.normal_conv4 = nn.Sequential(
+            nn.ReLU(inplace=False),
+            nn.Conv2d(self.out_channels, self.out_channels, kernel_size=5, stride=1, padding=4,
+                      dilation=2, bias=False),
+            nn.Conv2d(self.out_channels, self.out_channels, kernel_size=1, padding=0, bias=False))
 
         self.avgpool = nn.AvgPool2d(kernel_size=2)
         self.maxpool = nn.MaxPool2d(kernel_size=2)
@@ -274,31 +296,13 @@ class DisCell(nn.Module):
                 raise NotImplementedError(self.disconv_type)
         else:
             if self.disconv_type == 'sep_conv_3x3':
-                normal_conv1 = nn.Sequential(
-                    nn.ReLU(inplace=False),
-                    nn.Conv2d(self.out_channels, self.out_channels, kernel_size=3, stride=1, padding=1, bias=False),
-                    nn.Conv2d(self.out_channels, self.out_channels, kernel_size=1, padding=0, bias=False))
-                h = normal_conv1(h)
+                h = self.normal_conv1(h)
             elif self.disconv_type == 'sep_conv_5x5':
-                normal_conv2 = nn.Sequential(
-                    nn.ReLU(inplace=False),
-                    nn.Conv2d(self.out_channels, self.out_channels, kernel_size=5, stride=1, padding=2, bias=False),
-                    nn.Conv2d(self.out_channels, self.out_channels, kernel_size=1, padding=0, bias=False))
-                h = normal_conv2(h)
+                h = self.normal_conv2(h)
             elif self.disconv_type == 'dil_conv_3x3':
-                normal_conv3 = nn.Sequential(
-                    nn.ReLU(inplace=False),
-                    nn.Conv2d(self.out_channels, self.out_channels, kernel_size=3, stride=1, padding=2,
-                              dilation=2, bias=False),
-                    nn.Conv2d(self.out_channels, self.out_channels, kernel_size=1, padding=0, bias=False))
-                h = normal_conv3(h)
+                h = self.normal_conv3(h)
             elif self.disconv_type == 'dil_conv_5x5':
-                normal_conv4 = nn.Sequential(
-                    nn.ReLU(inplace=False),
-                    nn.Conv2d(self.out_channels, self.out_channels, kernel_size=5, stride=1, padding=4,
-                              dilation=2, bias=False),
-                    nn.Conv2d(self.out_channels, self.out_channels, kernel_size=1, padding=0, bias=False))
-                h = normal_conv4(h)
+                h = self.normal_conv4(h)
             elif self.disconv_type == 'max_pool_3x3':
                 h = h
             elif self.disconv_type == 'avg_pool_3x3':
