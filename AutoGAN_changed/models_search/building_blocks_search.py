@@ -344,7 +344,7 @@ class DisCell(nn.Module):
             else:
                 raise NotImplementedError(self.norm_type)
         if self.short_cut:
-            h = h + self.short_cut(x)
+            h = h + self.shortcut(x)
         final_out = h
         return final_out
 
