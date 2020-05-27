@@ -266,7 +266,14 @@ class DisCell(nn.Module):
 
         self.avgpool = nn.AvgPool2d(kernel_size=2)
         self.maxpool = nn.MaxPool2d(kernel_size=2)
-        self.c_sc = nn.Conv2d(in_channels, out_channels, kernel_size=1)
+        if self.learnable_sc:
+            self.c_sc = nn.Conv2d(
+                in_channels,
+                out_channels,
+                kernel_size=1,
+                padding=0)
+            if args.d_spectral_norm:
+                self.c_sc = nn.utils.spectral_norm(self.c_sc)
 
     def set_arch(self, disconv_id, norm_id, sc_id):
         self.norm_type = NORM_TYPE[norm_id]
